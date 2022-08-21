@@ -1,28 +1,47 @@
-use super::schema::{Kind, Pet, User};
-use axum::{response::IntoResponse, Json};
+use super::db::schema::{Kind, Pet, User};
+use async_graphql::SimpleObject;
 use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
 pub(crate) struct LoginRequest {
     email: String,
     password: String,
 }
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
 pub(crate) struct RegisterRequest {
     username: String,
     email: String,
     password: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
+pub(crate) struct UserResponse {
+    pub(crate) user: User,
+    pub(crate) token: String,
+}
+
 pub(crate) trait Data:
-    Clone + core::fmt::Debug + Serialize + serde::de::DeserializeOwned + 'static
+    Clone
+    + core::fmt::Debug
+    + Serialize
+    + serde::de::DeserializeOwned
+    + Send
+    + Sync
+    + 'static
+    + async_graphql::OutputType
 {
 }
 
 impl<T> Data for T where
-    T: Clone + core::fmt::Debug + Serialize + serde::de::DeserializeOwned + 'static
+    T: Send
+        + Sync
+        + Clone
+        + core::fmt::Debug
+        + Serialize
+        + serde::de::DeserializeOwned
+        + 'static
+        + async_graphql::OutputType
 {
 }
 
@@ -34,7 +53,27 @@ pub(crate) struct Response<D: Data> {
     data: Option<D>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+impl<D: Data> Response<D> {
+    pub fn new(data: D) -> Self {
+        Response {
+            err: None,
+            data: Some(data),
+        }
+    }
+}
+
+#[async_graphql::Object]
+impl<D: Data> Response<D> {
+    async fn err(&self) -> Option<&str> {
+        self.err.as_deref()
+    }
+
+    async fn data(&self) -> Option<&D> {
+        self.data.as_ref()
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
 pub(crate) struct RankRecord {
     username: String,
     pet: Pet,
@@ -47,6 +86,21 @@ pub(crate) struct CreatePetRequest {
     kind: Kind,
 }
 
+#[async_graphql::Object]
+impl CreatePetRequest {
+    async fn user_id(&self) -> String {
+        self.user_id.to_string()
+    }
+
+    async fn name(&self) -> &str {
+        &self.name
+    }
+
+    async fn kind(&self) -> &'static str {
+        self.kind.as_str()
+    }
+}
+
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub(crate) struct UpdatePetRequest {
     user_id: ObjectId,
@@ -54,31 +108,20 @@ pub(crate) struct UpdatePetRequest {
     experiences: usize,
 }
 
+#[async_graphql::Object]
+impl UpdatePetRequest {
+    async fn user_id(&self) -> String {
+        self.user_id.to_string()
+    }
+    async fn level(&self) -> usize {
+        self.level
+    }
+    async fn experiences(&self) -> usize {
+        self.experiences
+    }
+}
+
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub(crate) struct DeletePetRequest {
     user_id: ObjectId,
-}
-
-pub(crate) async fn register(Json(payload): Json<RegisterRequest>) -> impl IntoResponse {
-    todo!()
-}
-
-pub(crate) async fn login(Json(payload): Json<LoginRequest>) -> impl IntoResponse {
-    todo!()
-}
-
-pub(crate) async fn rank() -> impl IntoResponse {
-    todo!()
-}
-
-pub(crate) async fn create_pet(Json(payload): Json<CreatePetRequest>) -> impl IntoResponse {
-    todo!()
-}
-
-pub(crate) async fn update_pet(Json(payload): Json<UpdatePetRequest>) -> impl IntoResponse {
-    todo!()
-}
-
-pub(crate) async fn delete_pet(Json(payload): Json<DeletePetRequest>) -> impl IntoResponse {
-    todo!()
 }
