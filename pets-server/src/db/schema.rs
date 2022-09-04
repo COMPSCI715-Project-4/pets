@@ -1,3 +1,4 @@
+use async_graphql::Context;
 use mongodb::bson::{oid::ObjectId, DateTime};
 use serde::{Deserialize, Serialize};
 
@@ -145,29 +146,34 @@ impl User {
     async fn id(&self) -> String {
         self.id.to_string()
     }
+
     async fn username(&self) -> &str {
         &self.username
     }
+
     async fn email(&self) -> &str {
         &self.email
-    }
-    async fn password(&self) -> &str {
-        &self.password
     }
 
     async fn pets(&self) -> Vec<Pet> {
         self.pets.clone()
     }
+
     async fn currency(&self) -> usize {
         self.currency
     }
+
     async fn foods(&self) -> Vec<Food> {
         self.foods.clone()
     }
-    async fn followers(&self) -> Vec<String> {
-        self.followers.iter().map(|id| id.to_string()).collect()
+
+    async fn followers<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Vec<User>, async_graphql::Error> {
+        // self.followers.iter().map(|id| id.to_string()).collect();
+        todo!()
     }
-    async fn followings(&self) -> Vec<String> {
-        self.followers.iter().map(|id| id.to_string()).collect()
+
+    async fn followings<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Vec<User>, async_graphql::Error> {
+        // self.followers.iter().map(|id| id.to_string()).collect()
+        todo!()
     }
 }
