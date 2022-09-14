@@ -1,5 +1,5 @@
 use async_graphql::Context;
-use mongodb::bson::{oid::ObjectId, DateTime};
+use mongodb::bson::{oid::ObjectId, Bson, DateTime, Document};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -52,6 +52,20 @@ impl Pet {
     }
 }
 
+impl From<Pet> for Bson {
+    fn from(pet: Pet) -> Self {
+        let mut doc = Document::new();
+        doc.insert("id", pet.id);
+        doc.insert("name", pet.name);
+        doc.insert("birthday", pet.birthday);
+        doc.insert("level", pet.level as i64);
+        doc.insert("experiences", pet.experiences as i64);
+        doc.insert("kind", pet.kind.as_str());
+
+        Bson::Document(doc)
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) enum Kind {
     Dog,
@@ -71,44 +85,53 @@ impl Kind {
     }
 }
 
+impl From<String> for Kind {
+    fn from(kind: String) -> Self {
+        match kind.as_str().trim() {
+            "dog" => Kind::Dog,
+            "cat" => Kind::Cat,
+            "panda" => Kind::Panda,
+            "fox" => Kind::Fox,
+            _ => panic!("Invalid pet kind"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct Food {
-    pub(crate) name: String,
-    pub(crate) r#type: FoodType,
+pub(crate) struct Ticket {
+    pub(crate) description: String,
     pub(crate) expires_at: u64,
-    pub(crate) price: u64,
+}
+
+impl Ticket {
+    pub fn new(description: String, expires_at: u64) -> Ticket {
+        Ticket {
+            description,
+            expires_at,
+        }
+    }
+}
+
+impl From<Ticket> for Bson {
+    fn from(ticket: Ticket) -> Self {
+        let mut doc = Document::new();
+        doc.insert("description", ticket.description);
+        doc.insert("expires_at", ticket.expires_at as i64);
+        Bson::Document(doc)
+    }
 }
 
 #[async_graphql::Object]
-impl Food {
-    async fn name(&self) -> &str {
-        &self.name
+impl Ticket {
+    async fn description(&self) -> &str {
+        &self.description
     }
-    async fn r#type(&self) -> &'static str {
-        self.r#type.as_str()
-    }
-    async fn expires_at(&self) -> u64 {
-        self.expires_at
-    }
-    async fn price(&self) -> u64 {
-        self.price
-    }
-}
 
-#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
-pub(crate) enum FoodType {
-    Apple,
-    Banana,
-    Orange,
-}
-
-impl FoodType {
-    pub const fn as_str(&self) -> &'static str {
-        match self {
-            FoodType::Apple => "apple",
-            FoodType::Banana => "banana",
-            FoodType::Orange => "orange",
-        }
+    async fn expires_at(&self) -> chrono::DateTime<chrono::Utc> {
+        chrono::DateTime::from_utc(
+            chrono::NaiveDateTime::from_timestamp(self.expires_at as i64, 0),
+            chrono::Utc,
+        )
     }
 }
 
@@ -118,9 +141,9 @@ pub(crate) struct User {
     pub(crate) username: String,
     pub(crate) email: String,
     pub(crate) password: String,
-    pub(crate) pets: Vec<Pet>,
+    pub(crate) pet: Option<Pet>,
     pub(crate) currency: usize,
-    pub(crate) foods: Vec<Food>,
+    pub(crate) tickets: Vec<Ticket>,
     pub(crate) followers: Vec<ObjectId>,
     pub(crate) followings: Vec<ObjectId>,
 }
@@ -132,9 +155,9 @@ impl User {
             username,
             email,
             password,
-            pets: Vec::new(),
+            pet: None,
             currency: 0,
-            foods: Vec::new(),
+            tickets: Vec::new(),
             followers: Vec::new(),
             followings: Vec::new(),
         }
@@ -155,24 +178,30 @@ impl User {
         &self.email
     }
 
-    async fn pets(&self) -> Vec<Pet> {
-        self.pets.clone()
+    async fn pet(&self) -> Option<Pet> {
+        self.pet.clone()
     }
 
     async fn currency(&self) -> usize {
         self.currency
     }
 
-    async fn foods(&self) -> Vec<Food> {
-        self.foods.clone()
+    async fn tickets(&self) -> Vec<Ticket> {
+        self.tickets.clone()
     }
 
-    async fn followers<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Vec<User>, async_graphql::Error> {
+    async fn followers<'ctx>(
+        &self,
+        ctx: &Context<'ctx>,
+    ) -> Result<Vec<User>, async_graphql::Error> {
         // self.followers.iter().map(|id| id.to_string()).collect();
         todo!()
     }
 
-    async fn followings<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Vec<User>, async_graphql::Error> {
+    async fn followings<'ctx>(
+        &self,
+        ctx: &Context<'ctx>,
+    ) -> Result<Vec<User>, async_graphql::Error> {
         // self.followers.iter().map(|id| id.to_string()).collect()
         todo!()
     }

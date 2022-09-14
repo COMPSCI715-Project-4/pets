@@ -1,5 +1,5 @@
 use crate::{
-    db::schema::{Pet, User},
+    db::schema::{Kind, Pet, Ticket, User},
     routes::{Response, UserResponse},
     Config,
 };
@@ -14,7 +14,10 @@ use axum::{
 };
 use chrono::Utc;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
-use mongodb::{bson::doc, Client};
+use mongodb::{
+    bson::{doc, oid::ObjectId},
+    Client,
+};
 use pbkdf2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Pbkdf2,
@@ -83,10 +86,7 @@ fn hash_password(password: &[u8], salt: impl AsRef<str>) -> Result<String, async
 fn verify_password(password: &[u8], password_hash: &str) -> Result<(), async_graphql::Error> {
     // Verify password against PHC string
     PasswordHash::new(password_hash)
-        .and_then(|parsed_hash| {
-            Pbkdf2
-            .verify_password(password, &parsed_hash)
-        })
+        .and_then(|parsed_hash| Pbkdf2.verify_password(password, &parsed_hash))
         .map_err(|e| {
             tracing::error!(err=?e);
             async_graphql::Error::new("wrong email or password")
@@ -166,11 +166,21 @@ impl Graphql {
         }
     }
 
-    async fn follow<'ctx>(&self, ctx: &Context<'ctx>, token: String, user_id: String) -> Result<Response<UserResponse>, async_graphql::Error> {
+    async fn follow<'ctx>(
+        &self,
+        ctx: &Context<'ctx>,
+        token: String,
+        user_id: String,
+    ) -> Result<Response<UserResponse>, async_graphql::Error> {
         todo!()
     }
 
-    async fn unfollow<'ctx>(&self, ctx: &Context<'ctx>, token: String, user_id: String) -> Result<Response<UserResponse>, async_graphql::Error> {
+    async fn unfollow<'ctx>(
+        &self,
+        ctx: &Context<'ctx>,
+        token: String,
+        user_id: String,
+    ) -> Result<Response<UserResponse>, async_graphql::Error> {
         todo!()
     }
 
@@ -181,28 +191,166 @@ impl Graphql {
         #[graphql(validator(min_length = 4, max_length = 64))] name: String,
         kind: String,
     ) -> Result<Response<Pet>> {
-        todo!()
+        let cfg = ctx.data::<Config>()?;
+        let jwt = parse_jwt(token, &cfg.secret)?;
+        let id: [u8; 12] = jwt.sub.as_bytes().try_into().unwrap();
+        let user_id = ObjectId::from(id);
+        let users = ctx
+            .data::<Client>()?
+            .database(&cfg.db_name)
+            .collection::<User>("users");
+        let pet = Pet::new(name, Kind::from(kind));
+        let filter = doc! {
+            "id": user_id,
+        };
+        let update = doc! {
+            "$set": {
+                "pet": Some(pet.clone()),
+            }
+        };
+        users
+            .find_one_and_update(filter, update, None)
+            .await
+            .map(|_| Response::new(pet))
+            .map_err(|e| {
+                tracing::error!(err=?e);
+                async_graphql::Error::new(format!("{}", e))
+            })
     }
 
     async fn update_pet<'ctx>(
         &self,
         ctx: &Context<'ctx>,
         token: String,
-        pet_id: String,
         #[graphql(validator(min_length = 4, max_length = 64))] name: Option<String>,
         level: Option<usize>,
         experiences: Option<usize>,
     ) -> Result<Response<Pet>> {
-        todo!()
+        let cfg = ctx.data::<Config>()?;
+        let jwt = parse_jwt(token, &cfg.secret)?;
+        let id: [u8; 12] = jwt.sub.as_bytes().try_into().unwrap();
+        let user_id = ObjectId::from(id);
+        let users = ctx
+            .data::<Client>()?
+            .database(&cfg.db_name)
+            .collection::<User>("users");
+
+        let filter = doc! {
+            "id": user_id,
+        };
+
+        let user = users
+            .find_one(filter.clone(), None)
+            .await
+            .map_err(|e| {
+                tracing::error!(err=?e);
+                async_graphql::Error::new(format!("{}", e))
+            })?
+            .unwrap();
+
+        let mut pet: Pet = user.pet.unwrap();
+        if let Some(expr) = experiences {
+            pet.experiences = expr;
+        }
+
+        if let Some(l) = level {
+            pet.level = l;
+        }
+
+        if let Some(name) = name {
+            pet.name = name;
+        }
+
+        let update = doc! {
+            "$set": {
+                "pet": Some(pet.clone()),
+            }
+        };
+
+        users
+            .update_one(filter, update, None)
+            .await
+            .map(|_| Response::new(pet))
+            .map_err(|e| {
+                tracing::error!(err=?e);
+                async_graphql::Error::new(format!("{}", e))
+            })
     }
 
-    async fn delete_pet<'ctx>(
+    async fn delete_pet<'ctx>(&self, ctx: &Context<'ctx>, token: String) -> Result<Response<Pet>> {
+        let cfg = ctx.data::<Config>()?;
+        let jwt = parse_jwt(token, &cfg.secret)?;
+        let id: [u8; 12] = jwt.sub.as_bytes().try_into().unwrap();
+        let user_id = ObjectId::from(id);
+        let users = ctx
+            .data::<Client>()?
+            .database(&cfg.db_name)
+            .collection::<User>("users");
+
+        let filter = doc! {
+            "id": user_id,
+        };
+
+        let user = users
+            .find_one(filter.clone(), None)
+            .await
+            .map_err(|e| {
+                tracing::error!(err=?e);
+                async_graphql::Error::new(format!("{}", e))
+            })?
+            .unwrap();
+
+        if user.pet.is_none() {
+            return Err(async_graphql::Error::new("pet not found"));
+        }
+
+        let update = doc! {
+            "$set": {
+                "pet": Option::<Pet>::None,
+            }
+        };
+        users
+            .update_one(filter, update, None)
+            .await
+            .map(|_| Response::new(user.pet.unwrap()))
+            .map_err(|e| {
+                tracing::error!(err=?e);
+                async_graphql::Error::new(format!("{}", e))
+            })
+    }
+
+    async fn add_ticket<'ctx>(
         &self,
         ctx: &Context<'ctx>,
         token: String,
-        pet_id: String,
-    ) -> Result<Response<Pet>> {
-        todo!()
+        description: String,
+        expires_at: u64,
+    ) -> Result<Response<Vec<Ticket>>> {
+        let cfg = ctx.data::<Config>()?;
+        let jwt = parse_jwt(token, &cfg.secret)?;
+        let id: [u8; 12] = jwt.sub.as_bytes().try_into().unwrap();
+        let user_id = ObjectId::from(id);
+        let users = ctx
+            .data::<Client>()?
+            .database(&cfg.db_name)
+            .collection::<User>("users");
+        let filter = doc! {
+            "id": user_id,
+        };
+        let update = doc! {
+            "$push": {
+                "tickets": Ticket::new(description, expires_at),
+            }
+        };
+        let user = users
+            .find_one_and_update(filter, update, None)
+            .await
+            .map_err(|e| {
+                tracing::error!(err=?e);
+                async_graphql::Error::new(format!("{}", e))
+            })?
+            .unwrap();
+        Ok(Response::new(user.tickets))
     }
 }
 
