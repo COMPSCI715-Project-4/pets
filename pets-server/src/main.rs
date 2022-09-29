@@ -1,14 +1,13 @@
 mod routes;
 
 use axum::{
-    routing::{get, post},
+    routing::post,
     *,
 };
-use axum_server::tls_rustls::RustlsConfig;
-use async_graphql::{EmptyMutation, EmptySubscription, Schema};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use clap::Parser;
 use mongodb::{options::ClientOptions, Client};
-use std::{net::SocketAddr, path::PathBuf};
+use std::net::SocketAddr;
 
 
 mod db;
@@ -43,6 +42,13 @@ struct Config {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::new(
+            std::env::var("RUST_LOG").unwrap_or_else(|_| "example_form=debug".into()),
+        ))
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+
     let config = Config::parse();
 
     // Parse a connection string into an options struct.
@@ -56,28 +62,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     DB_CLIENT.set(client).unwrap();
     CONFIG.set(config.clone()).unwrap();
-    // // configure certificate and private key used by https
-    // let tls_config = RustlsConfig::from_pem_file(
-    //     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-    //         .join("self_signed_certs")
-    //         .join("cert.pem"),
-    //     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-    //         .join("self_signed_certs")
-    //         .join("key.pem"),
-    // )
-    // .await
-    // .unwrap();
 
     let app = Router::new()
         .route("/login", post(graphql::login))
         .route("/signup", post(graphql::signup))
-        .route("/pet/create", post(graphql::create_pet))
         .route("/pet/update", post(graphql::update_pet))
         .route("/ticket/create", post(graphql::create_ticket))
         .route("/ticket/fetch", post(graphql::fetch_tickets))
         ;
 
-        
+    tracing::debug!("listening on {}", config.addr);
     Server::bind(&config.addr)
         .serve(app.into_make_service())
         .await?;

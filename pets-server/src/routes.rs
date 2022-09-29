@@ -1,6 +1,4 @@
 use super::db::schema::{Pet, User};
-use async_graphql::SimpleObject;
-use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -13,13 +11,6 @@ pub(crate) struct LoginRequest {
 pub(crate) struct SignupRequest {
     pub(crate) username: String,
     pub(crate) password: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct CreatePetRequest {
-    pub(crate) username: String,
-    pub(crate) name: String,
-    pub(crate) token: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

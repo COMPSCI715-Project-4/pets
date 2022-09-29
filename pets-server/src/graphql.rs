@@ -1,11 +1,11 @@
 use crate::{
     db::schema::{Pet, Ticket, User},
-    routes::{UserResponse, LoginRequest, Response, SignupRequest, CreatePetRequest, UpdatePetRequest, CreateTicketRequest, FetchTicketsRequest},
+    routes::{UserResponse, LoginRequest, Response, SignupRequest, UpdatePetRequest, CreateTicketRequest, FetchTicketsRequest},
     DB_CLIENT, CONFIG,
 };
 
 use axum::{
-    response::IntoResponse, http::StatusCode, Json,
+    response::IntoResponse, http::StatusCode, Json, Form,
 };
 use chrono::Utc;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
@@ -86,7 +86,7 @@ fn verify_password(password: &[u8], password_hash: &str) -> Result<(), async_gra
 }
 
 
-pub(crate) async fn login(Json(req): Json<LoginRequest>) -> impl IntoResponse {
+pub(crate) async fn login(Form(req): Form<LoginRequest>) -> impl IntoResponse {
     let client = DB_CLIENT.get().unwrap();
     let cfg = CONFIG.get().unwrap();
     let users = client
@@ -120,7 +120,7 @@ pub(crate) async fn login(Json(req): Json<LoginRequest>) -> impl IntoResponse {
     }
 }
 
-pub(crate) async fn signup(Json(req): Json<SignupRequest>) -> impl IntoResponse {
+pub(crate) async fn signup(Form(req): Form<SignupRequest>) -> impl IntoResponse {
     let client = DB_CLIENT.get().unwrap();
     let cfg = CONFIG.get().unwrap();
     let users = client.database(&cfg.db_name).collection::<User>("users");
@@ -162,46 +162,8 @@ pub(crate) async fn signup(Json(req): Json<SignupRequest>) -> impl IntoResponse 
     }
 }
 
-pub(crate) async fn create_pet(Json(req): Json<CreatePetRequest>) -> impl IntoResponse {
-    let client = DB_CLIENT.get().unwrap();
-    let cfg = CONFIG.get().unwrap();
-    let jwt = match parse_jwt(req.token, &cfg.secret) {
-        Ok(jwt) => jwt,
-        Err(e) => {
-            tracing::error!(err=?e);
-            return (StatusCode::BAD_REQUEST, Json(Response { err: Some(format!("{:?}", e)), data: None }));
-        }
-    };
 
-
-    let users = client
-        .database(&cfg.db_name)
-        .collection::<User>("users");
-    let pet = Pet::new(req.name);
-    let filter = doc! {
-        "username": jwt.sub,
-    };
-    let update = doc! {
-        "$set": {
-            "pet": Some(pet),
-        }
-    };
-   
-    match users
-        .find_one_and_update(filter, update, None)
-        .await 
-    {
-        Ok(Some(user)) => (StatusCode::OK, Json(Response { err: None, data: Some(user.pet) })),
-        Ok(None) => (StatusCode::BAD_REQUEST, Json(Response { err: Some("user not found".to_string()), data: None })),
-        Err(e) => {
-            tracing::error!(err=?e);
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(Response { err: Some(format!("{:?}", e)), data: None }))
-        }
-    }
-}
-
-
-pub(crate) async fn update_pet(Json(req): Json<UpdatePetRequest>) -> impl IntoResponse { 
+pub(crate) async fn update_pet(Form(req): Form<UpdatePetRequest>) -> impl IntoResponse { 
     let client = DB_CLIENT.get().unwrap();
     let cfg = CONFIG.get().unwrap();
     let jwt = match parse_jwt(req.token, &cfg.secret) {
@@ -222,24 +184,20 @@ pub(crate) async fn update_pet(Json(req): Json<UpdatePetRequest>) -> impl IntoRe
 
     match users.find_one(filter.clone(), None).await {
         Ok(Some(user)) => {
-            let pet: Option<Pet> = user.pet;
-            if let Some(mut pet) = pet {
-                pet.level = req.level;
-                let update = doc! {
-                    "$set": {
-                        "pet": Some(pet.clone()),
-                    }
-                };
-
-                match users.update_one(filter, update, None).await {
-                    Ok(_) => (StatusCode::OK, Json(Response { err: None, data: Some(pet) })),
-                    Err(e) => {
-                        tracing::error!(err=?e);
-                        (StatusCode::INTERNAL_SERVER_ERROR, Json(Response { err: Some(format!("{:?}", e)), data: None }))
-                    }
+            let mut pet: Pet = user.pet;
+            pet.level = req.level;
+            let update = doc! {
+                "$set": {
+                    "pet": Some(pet.clone()),
                 }
-            } else {
-                (StatusCode::BAD_REQUEST, Json(Response { err: Some("pet not found".to_string()), data: None }))
+            };
+
+            match users.update_one(filter, update, None).await {
+                Ok(_) => (StatusCode::OK, Json(Response { err: None, data: Some(pet) })),
+                Err(e) => {
+                    tracing::error!(err=?e);
+                    (StatusCode::INTERNAL_SERVER_ERROR, Json(Response { err: Some(format!("{:?}", e)), data: None }))
+                }
             }
         },
         Ok(None) => {
@@ -252,7 +210,7 @@ pub(crate) async fn update_pet(Json(req): Json<UpdatePetRequest>) -> impl IntoRe
     }
 }
 
-pub(crate) async fn create_ticket(Json(req): Json<CreateTicketRequest>) -> impl IntoResponse {
+pub(crate) async fn create_ticket(Form(req): Form<CreateTicketRequest>) -> impl IntoResponse {
 
     let client = DB_CLIENT.get().unwrap();
     let cfg = CONFIG.get().unwrap();
@@ -299,7 +257,7 @@ pub(crate) async fn create_ticket(Json(req): Json<CreateTicketRequest>) -> impl 
     } 
 }
 
-pub(crate) async fn fetch_tickets(Json(req): Json<FetchTicketsRequest>) -> impl IntoResponse {
+pub(crate) async fn fetch_tickets(Form(req): Form<FetchTicketsRequest>) -> impl IntoResponse {
     let client = DB_CLIENT.get().unwrap();
     let cfg = CONFIG.get().unwrap();
     let jwt = match parse_jwt(req.token, &cfg.secret) {

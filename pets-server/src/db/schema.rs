@@ -3,17 +3,15 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct Pet {
-    pub(crate) id: ObjectId,
-    pub(crate) name: String,
+    pub(crate) id: ObjectId, 
     pub(crate) birthday: DateTime,
     pub(crate) level: usize,
 }
 
 impl Pet {
-    pub(crate) fn new(name: String) -> Self {
+    pub(crate) fn new() -> Self {
         Pet {
             id: ObjectId::new(),
-            name,
             birthday: chrono::Utc::now().into(),
             level: 1,
         }
@@ -24,7 +22,6 @@ impl From<Pet> for Bson {
     fn from(pet: Pet) -> Self {
         let mut doc = Document::new();
         doc.insert("id", pet.id);
-        doc.insert("name", pet.name);
         doc.insert("birthday", pet.birthday);
         doc.insert("level", pet.level as i64);
         Bson::Document(doc)
@@ -64,7 +61,7 @@ pub(crate) struct User {
     pub(crate) username: String, 
     pub(crate) password: String,
     pub(crate) level: usize,
-    pub(crate) pet: Option<Pet>,
+    pub(crate) pet: Pet,
     pub(crate) tickets: Vec<Ticket>,
 }
 
@@ -74,7 +71,7 @@ impl User {
             id: ObjectId::new(),
             username,
             password,
-            pet: None,
+            pet: Pet::new(),
             tickets: Vec::new(),
             level: 1,
         }
