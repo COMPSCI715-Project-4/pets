@@ -4,18 +4,22 @@ use axum::{
     routing::{get, post},
     *,
 };
-
+use axum_server::tls_rustls::RustlsConfig;
 use async_graphql::{EmptyMutation, EmptySubscription, Schema};
 use clap::Parser;
-use std::net::SocketAddr;
+use mongodb::{options::ClientOptions, Client};
+use std::{net::SocketAddr, path::PathBuf};
 
-use crate::graphql::{graphql_handler, graphql_playground};
 
 mod db;
 mod graphql;
 
+
+static CONFIG: once_cell::sync::OnceCell<Config> = once_cell::sync::OnceCell::new();
+static DB_CLIENT: once_cell::sync::OnceCell<Client> = once_cell::sync::OnceCell::new();
+
 /// Go walkies CLI -- Boots up Go walkies server.
-#[derive(clap::Parser, Clone)]
+#[derive(clap::Parser, Clone, Debug)]
 struct Config {
     /// Socket address to listen on
     #[clap(short, long, env = "GO_WALKIES_ADDR", default_value = "127.0.0.1:8080")]
@@ -41,8 +45,6 @@ struct Config {
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let config = Config::parse();
 
-    use mongodb::{options::ClientOptions, Client};
-
     // Parse a connection string into an options struct.
     let mut client_options = ClientOptions::parse(&config.db_uri).await?;
 
@@ -52,15 +54,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Get a handle to the deployment.
     let client = Client::with_options(client_options)?;
 
-    let schema = Schema::build(graphql::Graphql, EmptyMutation, EmptySubscription)
-        .data(client)
-        .data(config.clone())
-        .finish();
+    DB_CLIENT.set(client).unwrap();
+    CONFIG.set(config.clone()).unwrap();
+    // // configure certificate and private key used by https
+    // let tls_config = RustlsConfig::from_pem_file(
+    //     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    //         .join("self_signed_certs")
+    //         .join("cert.pem"),
+    //     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    //         .join("self_signed_certs")
+    //         .join("key.pem"),
+    // )
+    // .await
+    // .unwrap();
 
     let app = Router::new()
-        .route("/", get(graphql_playground).post(graphql_handler))
-        .layer(Extension(schema));
+        .route("/login", post(graphql::login))
+        .route("/signup", post(graphql::signup))
+        .route("/pet/create", post(graphql::create_pet))
+        .route("/pet/update", post(graphql::update_pet))
+        .route("/ticket/create", post(graphql::create_ticket))
+        .route("/ticket/fetch", post(graphql::fetch_tickets))
+        ;
 
+        
     Server::bind(&config.addr)
         .serve(app.into_make_service())
         .await?;
