@@ -1,9 +1,10 @@
 use crate::{
     db::schema::{Pet, Ticket, User},
-    routes::{UserResponse, LoginRequest, Response, SignupRequest, UpdatePetRequest, CreateTicketRequest, FetchTicketsRequest},
+    routes::{UserResponse, LoginRequest, Response, SignupRequest, UpdatePetRequest, CreateTicketRequest, FetchTicketsRequest, Rank},
     DB_CLIENT, CONFIG,
 };
 
+use async_graphql::futures_util::StreamExt;
 use axum::{
     response::IntoResponse, http::StatusCode, Json, Form,
 };
@@ -289,6 +290,42 @@ pub(crate) async fn fetch_tickets(Form(req): Form<FetchTicketsRequest>) -> impl 
         Err(e) => {
             tracing::error!(err=?e);
             (StatusCode::INTERNAL_SERVER_ERROR, Json(Response { err: Some(format!("{:?}", e)), data: None }))
+        },
+    }
+}
+
+pub(crate) async fn rank() -> impl IntoResponse {
+    let client = DB_CLIENT.get().unwrap();
+    let cfg = CONFIG.get().unwrap();
+    let users = client
+        .database(&cfg.db_name)
+        .collection::<User>("users");
+    
+    match users.find(doc!{}, None).await {
+        Ok(mut users) => {
+            let mut vec = Vec::new();
+            while let Some(user) = users.next().await {
+                match user {
+                    Ok(user) => {
+                        vec.push(Rank {
+                            username: user.username,
+                            level: user.pet.level,
+                        });
+                        if vec.len() > 10 {
+                            break;
+                        }
+                    },
+                    Err(e) => {
+                        tracing::error!(err=?e);
+                        return (StatusCode::INTERNAL_SERVER_ERROR, Json(Response { err: Some(format!("{:?}", e)), data: None }));
+                    }
+                }
+            }
+            (StatusCode::OK, Json(Response { err: None, data: Some(vec) })) 
+        },
+        Err(e) => {
+            tracing::error!(err=?e);
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(Response { err: Some(format!("{:?}", e)), data: None })) 
         },
     }
 }

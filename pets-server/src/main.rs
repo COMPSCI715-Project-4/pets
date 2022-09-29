@@ -1,7 +1,7 @@
 mod routes;
 
 use axum::{
-    routing::post,
+    routing::{post, get},
     *,
 };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -69,7 +69,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .route("/pet/update", post(graphql::update_pet))
         .route("/ticket/create", post(graphql::create_ticket))
         .route("/ticket/fetch", post(graphql::fetch_tickets))
-        ;
+        .route("/rank", get(graphql::rank));
 
     tracing::debug!("listening on {}", config.addr);
     Server::bind(&config.addr)

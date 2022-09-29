@@ -29,7 +29,6 @@ pub(crate) struct FetchTicketsRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct UpdatePetRequest {
     pub(crate) token: String,
-    pub(crate) username: String,
     pub(crate) level: usize,
 }
 
@@ -37,6 +36,17 @@ pub(crate) struct UpdatePetRequest {
 pub(crate) struct UserResponse {
     pub(crate) user: User,
     pub(crate) token: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct Rank {
+    pub(crate) username: String,
+    pub(crate) level: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct RankResponse {
+    pub(crate) users: Vec<Rank>,
 }
 
 pub(crate) trait Data:
