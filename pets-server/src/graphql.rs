@@ -110,14 +110,15 @@ pub(crate) async fn login(Form(req): Form<LoginRequest>) -> impl IntoResponse {
                 Ok(res) => res,
                 Err(e) => {
                     tracing::error!(err=?e);
-                    (StatusCode::INTERNAL_SERVER_ERROR, Json(Response {
+                    (StatusCode::BAD_REQUEST, Json(Response {
                         err: Some(format!("{:?}", e)),
                         data: None,
                     }))
                 }
             }
         },
-        _ => (StatusCode::BAD_REQUEST, Json(Response { err: Some("user not found".to_string()), data: None })),
+        Ok(None) => (StatusCode::BAD_REQUEST, Json(Response { err: Some("user not found".to_string()), data: None })), 
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(Response { err: Some(e.to_string()), data: None })),
     }
 }
 
