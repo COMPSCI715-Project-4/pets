@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct Pet {
-    pub(crate) id: ObjectId, 
+    pub(crate) id: ObjectId,
     pub(crate) birthday: DateTime,
     pub(crate) level: usize,
 }
@@ -36,11 +36,11 @@ pub(crate) struct Ticket {
 }
 
 impl Ticket {
-    pub fn new(description: String, expires_at: u64) -> Ticket {
+    pub fn new(description: String, expires_at: u64, level: usize) -> Ticket {
         Ticket {
             description,
             expires_at,
-            level: 1,
+            level,
         }
     }
 }
@@ -58,7 +58,7 @@ impl From<Ticket> for Bson {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct User {
     pub(crate) id: ObjectId,
-    pub(crate) username: String, 
+    pub(crate) username: String,
     pub(crate) password: String,
     pub(crate) level: usize,
     pub(crate) pet: Pet,

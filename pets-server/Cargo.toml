@@ -7,8 +7,7 @@ edition = "2021"
 anyhow = "1"
 axum = "0.5"
 axum-server = { version = "0.4", features = ["tls-rustls"] }
-async-graphql = { version = "4", features = ["chrono"] }
-async-graphql-axum = "4"
+futures = "0.3"
 pbkdf2 = "0.11"
 clap = { version = "3.2", features = ["derive", "env"] }
 chrono = "0.4"

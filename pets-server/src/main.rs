@@ -1,18 +1,16 @@
 mod routes;
 
 use axum::{
-    routing::{post, get},
+    routing::{get, post},
     *,
 };
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use clap::Parser;
 use mongodb::{options::ClientOptions, Client};
 use std::net::SocketAddr;
-
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod db;
-mod graphql;
-
+mod handlers;
 
 static CONFIG: once_cell::sync::OnceCell<Config> = once_cell::sync::OnceCell::new();
 static DB_CLIENT: once_cell::sync::OnceCell<Client> = once_cell::sync::OnceCell::new();
@@ -64,12 +62,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     CONFIG.set(config.clone()).unwrap();
 
     let app = Router::new()
-        .route("/login", post(graphql::login))
-        .route("/signup", post(graphql::signup))
-        .route("/pet/update", post(graphql::update_pet))
-        .route("/ticket/create", post(graphql::create_ticket))
-        .route("/ticket/fetch", post(graphql::fetch_tickets))
-        .route("/rank", get(graphql::rank));
+        .route("/login", post(handlers::login))
+        .route("/signup", post(handlers::signup))
+        .route("/pet/update", post(handlers::update_pet))
+        .route("/ticket/create", post(handlers::create_ticket))
+        .route("/ticket/fetch", post(handlers::fetch_tickets))
+        .route("/rank", get(handlers::rank));
 
     tracing::debug!("listening on {}", config.addr);
     Server::bind(&config.addr)

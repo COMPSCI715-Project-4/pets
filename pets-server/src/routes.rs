@@ -50,24 +50,12 @@ pub(crate) struct RankResponse {
 }
 
 pub(crate) trait Data:
-    Clone
-    + core::fmt::Debug
-    + Serialize
-    + serde::de::DeserializeOwned
-    + Send
-    + Sync
-    + 'static
+    Clone + core::fmt::Debug + Serialize + serde::de::DeserializeOwned + Send + Sync + 'static
 {
 }
 
 impl<T> Data for T where
-    T: Send
-        + Sync
-        + Clone
-        + core::fmt::Debug
-        + Serialize
-        + serde::de::DeserializeOwned
-        + 'static
+    T: Send + Sync + Clone + core::fmt::Debug + Serialize + serde::de::DeserializeOwned + 'static
 {
 }
 
@@ -84,5 +72,3 @@ pub(crate) struct RankRecord {
     username: String,
     pet: Pet,
 }
-
-
