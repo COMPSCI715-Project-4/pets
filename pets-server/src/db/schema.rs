@@ -36,11 +36,11 @@ pub(crate) struct Ticket {
 }
 
 impl Ticket {
-    pub fn new(description: String, expires_at: u64) -> Ticket {
+    pub fn new(description: String, expires_at: u64, level: usize) -> Ticket {
         Ticket {
             description,
             expires_at,
-            level: 1,
+            level,
         }
     }
 }

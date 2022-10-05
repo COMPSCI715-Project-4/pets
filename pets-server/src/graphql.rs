@@ -234,7 +234,7 @@ pub(crate) async fn create_ticket(Form(req): Form<CreateTicketRequest>) -> impl 
 
     match users.find_one(filter.clone(), None).await {
         Ok(Some(mut user)) => {
-            user.tickets.push(Ticket::new(req.description, req.expires_at));
+            user.tickets.push(Ticket::new(req.description, req.expires_at, req.level));
             let update = doc! {
                 "$set": {
                     "tickets": user.tickets.clone(),
