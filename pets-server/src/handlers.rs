@@ -2,7 +2,8 @@ use crate::{
     db::schema::{Pet, Ticket, User},
     routes::{
         CreateTicketRequest, FetchTicketsRequest, LoginRequest, Rank, ResetAverageStepsRequest,
-        Response, SignupRequest, UpdateAverageStepsRequest, UpdatePetRequest, UserResponse,
+        Response, SignupRequest, UpdateAverageStepsRequest, UpdateHighestStepsRequest,
+        UpdatePetRequest, UserResponse,
     },
     CONFIG, DB_CLIENT,
 };
@@ -340,6 +341,65 @@ pub(crate) async fn reset_average_steps(
     }
 }
 
+pub(crate) async fn update_highest_steps(
+    Form(req): Form<UpdateHighestStepsRequest>,
+) -> impl IntoResponse {
+    let client = DB_CLIENT.get().unwrap();
+    let cfg = CONFIG.get().unwrap();
+    let jwt = match parse_jwt(req.token, &cfg.secret) {
+        Ok(jwt) => jwt,
+        Err(e) => {
+            tracing::error!(err=?e);
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(Response {
+                    err: Some(format!("{:?}", e)),
+                    data: None,
+                }),
+            );
+        }
+    };
+
+    let users = client.database(&cfg.db_name).collection::<User>("users");
+
+    let filter = doc! {
+        "username": jwt.sub,
+    };
+
+    let update = doc! {
+        "$max": {
+            "highest_steps": req.steps as i64,
+        }
+    };
+
+    match users.find_one_and_update(filter, update, None).await {
+        Ok(Some(user)) => (
+            StatusCode::OK,
+            Json(Response {
+                err: None,
+                data: Some(user),
+            }),
+        ),
+        Ok(None) => (
+            StatusCode::BAD_REQUEST,
+            Json(Response {
+                err: Some("user not found".to_string()),
+                data: None,
+            }),
+        ),
+        Err(e) => {
+            tracing::error!(err=?e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(Response {
+                    err: Some(e.to_string()),
+                    data: None,
+                }),
+            )
+        }
+    }
+}
+
 pub(crate) async fn update_pet(Form(req): Form<UpdatePetRequest>) -> impl IntoResponse {
     let client = DB_CLIENT.get().unwrap();
     let cfg = CONFIG.get().unwrap();
@@ -560,10 +620,8 @@ pub(crate) async fn rank() -> impl IntoResponse {
                         vec.push(Rank {
                             username: user.username,
                             level: user.pet.level,
+                            highest_steps: user.highest_steps as usize,
                         });
-                        if vec.len() > 10 {
-                            break;
-                        }
                     }
                     Err(e) => {
                         tracing::error!(err=?e);
@@ -577,6 +635,12 @@ pub(crate) async fn rank() -> impl IntoResponse {
                     }
                 }
             }
+
+            vec.sort_by(|a, b| match a.level.cmp(&b.level) {
+                std::cmp::Ordering::Equal => a.highest_steps.cmp(&b.highest_steps),
+                ord => ord,
+            });
+
             (
                 StatusCode::OK,
                 Json(Response {
