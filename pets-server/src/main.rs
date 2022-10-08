@@ -7,7 +7,6 @@ use axum::{
 use clap::Parser;
 use mongodb::{options::ClientOptions, Client};
 use std::net::SocketAddr;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod db;
 mod handlers;

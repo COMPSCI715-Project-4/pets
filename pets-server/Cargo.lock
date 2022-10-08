@@ -488,6 +488,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "gowalkies"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "axum-server",
+ "chrono",
+ "clap",
+ "futures",
+ "jsonwebtoken",
+ "mongodb",
+ "once_cell",
+ "pbkdf2 0.11.0",
+ "rand",
+ "serde",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "h2"
 version = "0.3.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -996,27 +1017,6 @@ name = "percent-encoding"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4fd5641d01c8f18a23da7b6fe29298ff4b55afcccdf78973b24cf3175fee32e"
-
-[[package]]
-name = "pets-server"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "axum",
- "axum-server",
- "chrono",
- "clap",
- "futures",
- "jsonwebtoken",
- "mongodb",
- "once_cell",
- "pbkdf2 0.11.0",
- "rand",
- "serde",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
 
 [[package]]
 name = "pin-project"
