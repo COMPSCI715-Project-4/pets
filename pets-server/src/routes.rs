@@ -14,6 +14,17 @@ pub(crate) struct SignupRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct UpdateAverageStepsRequest {
+    pub(crate) token: String,
+    pub(crate) average_steps: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct ResetAverageStepsRequest {
+    pub(crate) token: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct CreateTicketRequest {
     pub(crate) description: String,
     pub(crate) level: usize,
@@ -61,7 +72,6 @@ impl<T> Data for T where
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct Response<D: Data> {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) err: Option<String>,
     #[serde(bound = "D: Data", skip_serializing_if = "Option::is_none")]
     pub(crate) data: Option<D>,

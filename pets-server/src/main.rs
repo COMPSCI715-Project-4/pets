@@ -68,9 +68,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .route("/pet/update", post(handlers::update_pet))
         .route("/ticket/create", post(handlers::create_ticket))
         .route("/ticket/fetch", post(handlers::fetch_tickets))
-        .route("/rank", get(handlers::rank));
+        .route("/rank", get(handlers::rank))
+        .route("/intensity", post(handlers::update_average_steps))
+        .route("/intensity/reset", post(handlers::reset_average_steps));
 
-    tracing::debug!("listening on {}", config.addr);
+    tracing::info!("listening on {}", config.addr);
     Server::bind(&config.addr)
         .serve(app.into_make_service())
         .await?;

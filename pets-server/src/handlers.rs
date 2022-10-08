@@ -1,8 +1,8 @@
 use crate::{
     db::schema::{Pet, Ticket, User},
     routes::{
-        CreateTicketRequest, FetchTicketsRequest, LoginRequest, Rank, Response, SignupRequest,
-        UpdatePetRequest, UserResponse,
+        CreateTicketRequest, FetchTicketsRequest, LoginRequest, Rank, ResetAverageStepsRequest,
+        Response, SignupRequest, UpdateAverageStepsRequest, UpdatePetRequest, UserResponse,
     },
     CONFIG, DB_CLIENT,
 };
@@ -219,6 +219,124 @@ pub(crate) async fn signup(Form(req): Form<SignupRequest>) -> impl IntoResponse 
                 data: None,
             }),
         )
+    }
+}
+
+pub(crate) async fn update_average_steps(
+    Form(req): Form<UpdateAverageStepsRequest>,
+) -> impl IntoResponse {
+    let client = DB_CLIENT.get().unwrap();
+    let cfg = CONFIG.get().unwrap();
+    let jwt = match parse_jwt(req.token, &cfg.secret) {
+        Ok(jwt) => jwt,
+        Err(e) => {
+            tracing::error!(err=?e);
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(Response {
+                    err: Some(format!("{:?}", e)),
+                    data: None,
+                }),
+            );
+        }
+    };
+
+    let users = client.database(&cfg.db_name).collection::<User>("users");
+
+    let filter = doc! {
+        "username": jwt.sub,
+    };
+
+    let update = doc! {
+        "$set": {
+            "average_steps": Some(req.average_steps as i64),
+        }
+    };
+
+    match users.find_one_and_update(filter, update, None).await {
+        Ok(Some(user)) => (
+            StatusCode::OK,
+            Json(Response {
+                err: None,
+                data: Some(user),
+            }),
+        ),
+        Ok(None) => (
+            StatusCode::BAD_REQUEST,
+            Json(Response {
+                err: Some("user not found".to_string()),
+                data: None,
+            }),
+        ),
+        Err(e) => {
+            tracing::error!(err=?e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(Response {
+                    err: Some(e.to_string()),
+                    data: None,
+                }),
+            )
+        }
+    }
+}
+
+pub(crate) async fn reset_average_steps(
+    Form(req): Form<ResetAverageStepsRequest>,
+) -> impl IntoResponse {
+    let client = DB_CLIENT.get().unwrap();
+    let cfg = CONFIG.get().unwrap();
+    let jwt = match parse_jwt(req.token, &cfg.secret) {
+        Ok(jwt) => jwt,
+        Err(e) => {
+            tracing::error!(err=?e);
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(Response {
+                    err: Some(format!("{:?}", e)),
+                    data: None,
+                }),
+            );
+        }
+    };
+
+    let users = client.database(&cfg.db_name).collection::<User>("users");
+
+    let filter = doc! {
+        "username": jwt.sub,
+    };
+
+    let update = doc! {
+        "$set": {
+            "average_steps": Option::<i64>::None,
+        }
+    };
+
+    match users.find_one_and_update(filter, update, None).await {
+        Ok(Some(user)) => (
+            StatusCode::OK,
+            Json(Response {
+                err: None,
+                data: Some(user),
+            }),
+        ),
+        Ok(None) => (
+            StatusCode::BAD_REQUEST,
+            Json(Response {
+                err: Some("user not found".to_string()),
+                data: None,
+            }),
+        ),
+        Err(e) => {
+            tracing::error!(err=?e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(Response {
+                    err: Some(e.to_string()),
+                    data: None,
+                }),
+            )
+        }
     }
 }
 
