@@ -40,11 +40,13 @@ struct Config {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::new(
-            std::env::var("RUST_LOG").unwrap_or_else(|_| "example_form=debug".into()),
-        ))
-        .with(tracing_subscriber::fmt::layer())
+    let filter = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_owned());
+    tracing_subscriber::fmt::fmt()
+        .with_env_filter(filter)
+        .with_file(false)
+        .with_line_number(true)
+        .with_target(true)
+        .with_ansi(true)
         .init();
 
     let config = Config::parse();
