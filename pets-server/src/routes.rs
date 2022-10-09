@@ -20,17 +20,13 @@ pub(crate) struct UpdateAverageStepsRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct UpdateRankRequest {
+pub(crate) struct UpdateRecordRequest {
     pub(crate) token: String,
+    pub(crate) kind: String,
     pub(crate) steps: usize,
     pub(crate) level: usize,
     pub(crate) distance: f64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct UpdateHighestStepsRequest {
-    pub(crate) token: String,
-    pub(crate) steps: usize,
+    pub(crate) duration: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -75,21 +71,34 @@ pub(crate) struct RankResponse {
     pub(crate) users: Vec<Rank>,
 }
 
-pub(crate) trait Data:
-    Clone + core::fmt::Debug + Serialize + serde::de::DeserializeOwned + Send + Sync + 'static
-{
-}
-
-impl<T> Data for T where
-    T: Send + Sync + Clone + core::fmt::Debug + Serialize + serde::de::DeserializeOwned + 'static
-{
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct Response<D: Data> {
+pub(crate) struct Response<D> {
     pub(crate) err: Option<String>,
-    #[serde(bound = "D: Data", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) data: Option<D>,
+}
+
+impl<D> Response<D> {
+    pub(crate) fn new() -> Self {
+        Response {
+            err: None,
+            data: None,
+        }
+    }
+
+    pub(crate) fn with_err(err: String) -> Self {
+        Response {
+            err: Some(err),
+            data: None,
+        }
+    }
+
+    pub(crate) fn with_data(data: D) -> Self {
+        Response {
+            err: None,
+            data: Some(data),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

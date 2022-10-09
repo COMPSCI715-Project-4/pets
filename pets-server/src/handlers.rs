@@ -1,9 +1,8 @@
 use crate::{
-    db::schema::{Ticket, User},
+    db::schema::{Record, Ticket, User},
     routes::{
         CreateTicketRequest, FetchTicketsRequest, LoginRequest, Rank, ResetAverageStepsRequest,
-        Response, SignupRequest, UpdateAverageStepsRequest, UpdateHighestStepsRequest,
-        UpdateRankRequest, UserResponse,
+        Response, SignupRequest, UpdateAverageStepsRequest, UpdateRecordRequest, UserResponse,
     },
     CONFIG, DB_CLIENT,
 };
@@ -341,9 +340,7 @@ pub(crate) async fn reset_average_steps(
     }
 }
 
-pub(crate) async fn update_highest_steps(
-    Form(req): Form<UpdateHighestStepsRequest>,
-) -> impl IntoResponse {
+pub(crate) async fn update_record(Form(req): Form<UpdateRecordRequest>) -> impl IntoResponse {
     let client = DB_CLIENT.get().unwrap();
     let cfg = CONFIG.get().unwrap();
     let jwt = match parse_jwt(req.token, &cfg.secret) {
@@ -352,10 +349,7 @@ pub(crate) async fn update_highest_steps(
             tracing::error!(err=?e);
             return (
                 StatusCode::BAD_REQUEST,
-                Json(Response {
-                    err: Some(format!("{:?}", e)),
-                    data: None,
-                }),
+                Json(Response::<()>::with_err(e.to_string())),
             );
         }
     };
@@ -363,23 +357,103 @@ pub(crate) async fn update_highest_steps(
     let users = client.database(&cfg.db_name).collection::<User>("users");
 
     let filter = doc! {
-        "username": jwt.sub,
+        "username": jwt.sub.clone(),
     };
 
-    let update = doc! {
-        "$max": {
-            "highest_steps": req.steps as i64,
+    match users.find_one(filter, None).await {
+        Ok(Some(user)) => {
+            let update = match req.kind.to_lowercase().as_str().trim() {
+                "ticket" => {
+                    if req.steps >= user.ticket.steps as usize {
+                        Some(doc! {
+                            "$set": {
+                                "ticket": Record {
+                                    steps: req.steps as i64,
+                                    level: req.level as i64,
+                                    distance: req.distance,
+                                    duration: req.duration as i64,
+                                },
+                            },
+                        })
+                    } else {
+                        None
+                    }
+                }
+                "evolution" => {
+                    if req.steps >= user.ticket.steps as usize {
+                        Some(doc! {
+                            "$set": {
+                                "evolution": Record {
+                                    steps: req.steps as i64,
+                                    level: req.level as i64,
+                                    distance: req.distance,
+                                    duration: req.duration as i64,
+                                },
+                            },
+                        })
+                    } else {
+                        None
+                    }
+                }
+                "rank" => {
+                    if req.steps >= user.ticket.steps as usize {
+                        Some(doc! {
+                            "$set": {
+                                "rank": Record {
+                                    steps: req.steps as i64,
+                                    level: req.level as i64,
+                                    distance: req.distance,
+                                    duration: req.duration as i64,
+                                },
+                            },
+                        })
+                    } else {
+                        None
+                    }
+                }
+                _ => {
+                    return (
+                        StatusCode::BAD_REQUEST,
+                        Json(Response {
+                            err: Some("invalid kind".to_string()),
+                            data: None,
+                        }),
+                    )
+                }
+            };
+            if let Some(update) = update {
+                match users
+                    .update_one(doc! {"username": jwt.sub}, update, None)
+                    .await
+                {
+                    Ok(_) => (
+                        StatusCode::OK,
+                        Json(Response {
+                            err: None,
+                            data: None,
+                        }),
+                    ),
+                    Err(e) => {
+                        tracing::error!(err=?e);
+                        (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(Response {
+                                err: Some(e.to_string()),
+                                data: None,
+                            }),
+                        )
+                    }
+                }
+            } else {
+                (
+                    StatusCode::OK,
+                    Json(Response {
+                        err: None,
+                        data: None,
+                    }),
+                )
+            }
         }
-    };
-
-    match users.find_one_and_update(filter, update, None).await {
-        Ok(Some(user)) => (
-            StatusCode::OK,
-            Json(Response {
-                err: None,
-                data: Some(user),
-            }),
-        ),
         Ok(None) => (
             StatusCode::BAD_REQUEST,
             Json(Response {
@@ -387,77 +461,13 @@ pub(crate) async fn update_highest_steps(
                 data: None,
             }),
         ),
-        Err(e) => {
-            tracing::error!(err=?e);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(Response {
-                    err: Some(e.to_string()),
-                    data: None,
-                }),
-            )
-        }
-    }
-}
-
-pub(crate) async fn update_rank(Form(req): Form<UpdateRankRequest>) -> impl IntoResponse {
-    let client = DB_CLIENT.get().unwrap();
-    let cfg = CONFIG.get().unwrap();
-    let jwt = match parse_jwt(req.token, &cfg.secret) {
-        Ok(jwt) => jwt,
-        Err(e) => {
-            tracing::error!(err=?e);
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(Response {
-                    err: Some(format!("{:?}", e)),
-                    data: None,
-                }),
-            );
-        }
-    };
-
-    let users = client.database(&cfg.db_name).collection::<User>("users");
-
-    let filter = doc! {
-        "username": jwt.sub,
-    };
-
-    let update = doc! {
-        "$set": {
-            "level": req.level as i64,
-        },
-        "$max": {
-            "highest_steps": req.steps as i64,
-            "highest_distance": req.distance,
-        }
-    };
-
-    match users.find_one_and_update(filter, update, None).await {
-        Ok(Some(user)) => (
-            StatusCode::OK,
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
             Json(Response {
-                err: None,
-                data: Some(user),
-            }),
-        ),
-        Ok(None) => (
-            StatusCode::BAD_REQUEST,
-            Json(Response {
-                err: Some("user not found".to_string()),
+                err: Some(e.to_string()),
                 data: None,
             }),
         ),
-        Err(e) => {
-            tracing::error!(err=?e);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(Response {
-                    err: Some(e.to_string()),
-                    data: None,
-                }),
-            )
-        }
     }
 }
 
@@ -607,8 +617,8 @@ pub(crate) async fn rank() -> impl IntoResponse {
                     Ok(user) => {
                         vec.push(Rank {
                             username: user.username,
-                            level: user.level,
-                            highest_steps: user.highest_steps as usize,
+                            level: user.rank.level as usize,
+                            highest_steps: user.rank.steps as usize,
                         });
                     }
                     Err(e) => {

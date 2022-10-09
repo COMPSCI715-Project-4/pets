@@ -55,17 +55,36 @@ impl From<Ticket> for Bson {
     }
 }
 
+#[derive(Default, Debug, Copy, Clone, Serialize, Deserialize)]
+pub(crate) struct Record {
+    pub(crate) steps: i64,
+    pub(crate) level: i64,
+    pub(crate) distance: f64,
+    pub(crate) duration: i64,
+}
+
+impl From<Record> for Bson {
+    fn from(record: Record) -> Self {
+        let mut doc = Document::new();
+        doc.insert("steps", record.steps);
+        doc.insert("level", record.level);
+        doc.insert("distance", record.distance);
+        doc.insert("duration", record.duration);
+        Bson::Document(doc)
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct User {
     pub(crate) id: ObjectId,
     pub(crate) username: String,
     pub(crate) password: String,
-    pub(crate) level: usize,
     pub(crate) pet: Pet,
     pub(crate) tickets: Vec<Ticket>,
     pub(crate) average_steps: Option<i64>,
-    pub(crate) highest_steps: i64,
-    pub(crate) highest_distance: f64,
+    pub(crate) evolution: Record,
+    pub(crate) rank: Record,
+    pub(crate) ticket: Record,
 }
 
 impl User {
@@ -76,10 +95,10 @@ impl User {
             password,
             pet: Pet::new(),
             tickets: Vec::new(),
-            level: 0,
             average_steps: None,
-            highest_steps: 0,
-            highest_distance: 0.0,
+            evolution: Record::default(),
+            rank: Record::default(),
+            ticket: Record::default(),
         }
     }
 }
@@ -90,12 +109,12 @@ impl From<User> for Bson {
         doc.insert("id", user.id);
         doc.insert("username", user.username);
         doc.insert("password", user.password);
-        doc.insert("level", user.level as i64);
         doc.insert("pet", user.pet);
         doc.insert("tickets", user.tickets);
         doc.insert("average_steps", user.average_steps);
-        doc.insert("highest_steps", user.highest_steps);
-        doc.insert("highest_distance", user.highest_distance);
+        doc.insert("evolution", user.evolution);
+        doc.insert("rank", user.rank);
+        doc.insert("ticket", user.ticket);
         Bson::Document(doc)
     }
 }
