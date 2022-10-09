@@ -1,9 +1,9 @@
 use crate::{
-    db::schema::{Pet, Ticket, User},
+    db::schema::{Ticket, User},
     routes::{
         CreateTicketRequest, FetchTicketsRequest, LoginRequest, Rank, ResetAverageStepsRequest,
         Response, SignupRequest, UpdateAverageStepsRequest, UpdateHighestStepsRequest,
-        UpdatePetRequest, UpdateRankRequest, UserResponse,
+        UpdateRankRequest, UserResponse,
     },
     CONFIG, DB_CLIENT,
 };
@@ -606,7 +606,7 @@ pub(crate) async fn rank() -> impl IntoResponse {
                     Ok(user) => {
                         vec.push(Rank {
                             username: user.username,
-                            level: user.pet.level,
+                            level: user.level,
                             highest_steps: user.highest_steps as usize,
                         });
                     }
@@ -627,6 +627,7 @@ pub(crate) async fn rank() -> impl IntoResponse {
                 std::cmp::Ordering::Equal => a.highest_steps.cmp(&b.highest_steps),
                 ord => ord,
             });
+            vec.reverse();
 
             (
                 StatusCode::OK,
