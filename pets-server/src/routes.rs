@@ -20,6 +20,13 @@ pub(crate) struct UpdateAverageStepsRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct UpdateRankRequest {
+    pub(crate) token: String,
+    pub(crate) steps: usize,
+    pub(crate) level: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct UpdateHighestStepsRequest {
     pub(crate) token: String,
     pub(crate) steps: usize,

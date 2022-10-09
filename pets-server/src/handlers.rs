@@ -3,7 +3,7 @@ use crate::{
     routes::{
         CreateTicketRequest, FetchTicketsRequest, LoginRequest, Rank, ResetAverageStepsRequest,
         Response, SignupRequest, UpdateAverageStepsRequest, UpdateHighestStepsRequest,
-        UpdatePetRequest, UserResponse,
+        UpdatePetRequest, UpdateRankRequest, UserResponse,
     },
     CONFIG, DB_CLIENT,
 };
@@ -400,7 +400,7 @@ pub(crate) async fn update_highest_steps(
     }
 }
 
-pub(crate) async fn update_pet(Form(req): Form<UpdatePetRequest>) -> impl IntoResponse {
+pub(crate) async fn update_rank(Form(req): Form<UpdateRankRequest>) -> impl IntoResponse {
     let client = DB_CLIENT.get().unwrap();
     let cfg = CONFIG.get().unwrap();
     let jwt = match parse_jwt(req.token, &cfg.secret) {
@@ -423,36 +423,23 @@ pub(crate) async fn update_pet(Form(req): Form<UpdatePetRequest>) -> impl IntoRe
         "username": jwt.sub,
     };
 
-    match users.find_one(filter.clone(), None).await {
-        Ok(Some(user)) => {
-            let mut pet: Pet = user.pet;
-            pet.level = req.level;
-            let update = doc! {
-                "$set": {
-                    "pet": Some(pet.clone()),
-                }
-            };
-
-            match users.update_one(filter, update, None).await {
-                Ok(_) => (
-                    StatusCode::OK,
-                    Json(Response {
-                        err: None,
-                        data: Some(pet),
-                    }),
-                ),
-                Err(e) => {
-                    tracing::error!(err=?e);
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(Response {
-                            err: Some(format!("{:?}", e)),
-                            data: None,
-                        }),
-                    )
-                }
-            }
+    let update = doc! {
+        "$set": {
+            "level": req.level as i64,
+        },
+        "$max": {
+            "highest_steps": req.steps as i64,
         }
+    };
+
+    match users.find_one_and_update(filter, update, None).await {
+        Ok(Some(user)) => (
+            StatusCode::OK,
+            Json(Response {
+                err: None,
+                data: Some(user),
+            }),
+        ),
         Ok(None) => (
             StatusCode::BAD_REQUEST,
             Json(Response {
@@ -465,7 +452,7 @@ pub(crate) async fn update_pet(Form(req): Form<UpdatePetRequest>) -> impl IntoRe
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(Response {
-                    err: Some(format!("{:?}", e)),
+                    err: Some(e.to_string()),
                     data: None,
                 }),
             )

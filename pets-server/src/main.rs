@@ -66,10 +66,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .route("/login", post(handlers::login))
         .route("/signup", post(handlers::signup))
         .route("/steps", post(handlers::update_highest_steps))
-        .route("/pet/update", post(handlers::update_pet))
         .route("/ticket/create", post(handlers::create_ticket))
         .route("/ticket/fetch", post(handlers::fetch_tickets))
         .route("/rank", get(handlers::rank))
+        .route("/rank/update", post(handlers::update_rank))
         .route("/intensity", post(handlers::update_average_steps))
         .route("/intensity/reset", post(handlers::reset_average_steps));
 
