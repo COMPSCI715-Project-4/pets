@@ -429,6 +429,7 @@ pub(crate) async fn update_rank(Form(req): Form<UpdateRankRequest>) -> impl Into
         },
         "$max": {
             "highest_steps": req.steps as i64,
+            "highest_distance": req.distance,
         }
     };
 

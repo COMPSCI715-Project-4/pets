@@ -65,6 +65,7 @@ pub(crate) struct User {
     pub(crate) tickets: Vec<Ticket>,
     pub(crate) average_steps: Option<i64>,
     pub(crate) highest_steps: i64,
+    pub(crate) highest_distance: f64,
 }
 
 impl User {
@@ -78,6 +79,7 @@ impl User {
             level: 0,
             average_steps: None,
             highest_steps: 0,
+            highest_distance: 0.0,
         }
     }
 }
@@ -93,6 +95,7 @@ impl From<User> for Bson {
         doc.insert("tickets", user.tickets);
         doc.insert("average_steps", user.average_steps);
         doc.insert("highest_steps", user.highest_steps);
+        doc.insert("highest_distance", user.highest_distance);
         Bson::Document(doc)
     }
 }

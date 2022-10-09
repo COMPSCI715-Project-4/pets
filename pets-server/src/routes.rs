@@ -24,6 +24,7 @@ pub(crate) struct UpdateRankRequest {
     pub(crate) token: String,
     pub(crate) steps: usize,
     pub(crate) level: usize,
+    pub(crate) distance: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
