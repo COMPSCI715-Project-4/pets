@@ -343,6 +343,7 @@ pub(crate) async fn reset_average_steps(
 pub(crate) async fn update_record(Form(req): Form<UpdateRecordRequest>) -> impl IntoResponse {
     let client = DB_CLIENT.get().unwrap();
     let cfg = CONFIG.get().unwrap();
+    let nr: Record = Record::from(&req);
     let jwt = match parse_jwt(req.token, &cfg.secret) {
         Ok(jwt) => jwt,
         Err(e) => {
@@ -364,7 +365,7 @@ pub(crate) async fn update_record(Form(req): Form<UpdateRecordRequest>) -> impl 
         Ok(Some(user)) => {
             let update = match req.kind.to_lowercase().as_str().trim() {
                 "ticket" => {
-                    if req.steps >= user.ticket.steps as usize {
+                    if nr >= user.ticket {
                         Some(doc! {
                             "$set": {
                                 "ticket": Record {
@@ -380,7 +381,7 @@ pub(crate) async fn update_record(Form(req): Form<UpdateRecordRequest>) -> impl 
                     }
                 }
                 "evolution" => {
-                    if req.steps >= user.ticket.steps as usize {
+                    if nr >= user.evolution {
                         Some(doc! {
                             "$set": {
                                 "evolution": Record {
@@ -396,7 +397,7 @@ pub(crate) async fn update_record(Form(req): Form<UpdateRecordRequest>) -> impl 
                     }
                 }
                 "rank" => {
-                    if req.steps >= user.ticket.steps as usize {
+                    if nr >= user.rank {
                         Some(doc! {
                             "$set": {
                                 "rank": Record {

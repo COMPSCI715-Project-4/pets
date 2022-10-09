@@ -1,3 +1,5 @@
+use crate::db::schema::Record;
+
 use super::db::schema::{Pet, User};
 use serde::{Deserialize, Serialize};
 
@@ -27,6 +29,17 @@ pub(crate) struct UpdateRecordRequest {
     pub(crate) level: usize,
     pub(crate) distance: f64,
     pub(crate) duration: usize,
+}
+
+impl<'a> From<&'a UpdateRecordRequest> for Record {
+    fn from(req: &'a UpdateRecordRequest) -> Self {
+        Self {
+            steps: req.steps as i64,
+            level: req.level as i64,
+            distance: req.distance,
+            duration: req.duration as i64,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

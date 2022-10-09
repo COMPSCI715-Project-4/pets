@@ -63,6 +63,28 @@ pub(crate) struct Record {
     pub(crate) duration: i64,
 }
 
+impl PartialEq for Record {
+    fn eq(&self, other: &Self) -> bool {
+        self.steps == other.steps && self.level == other.level
+    }
+}
+
+impl Eq for Record {}
+
+impl PartialOrd for Record {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Record {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.steps
+            .cmp(&other.steps)
+            .then(self.level.cmp(&other.level))
+    }
+}
+
 impl From<Record> for Bson {
     fn from(record: Record) -> Self {
         let mut doc = Document::new();
