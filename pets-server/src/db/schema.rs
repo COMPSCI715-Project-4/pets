@@ -75,7 +75,7 @@ impl User {
             password,
             pet: Pet::new(),
             tickets: Vec::new(),
-            level: 1,
+            level: 0,
             average_steps: None,
             highest_steps: 0,
         }
