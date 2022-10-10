@@ -368,12 +368,7 @@ pub(crate) async fn update_record(Form(req): Form<UpdateRecordRequest>) -> impl 
                     if nr >= user.ticket {
                         Some(doc! {
                             "$set": {
-                                "ticket": Record {
-                                    steps: req.steps as i64,
-                                    level: req.level as i64,
-                                    distance: req.distance,
-                                    duration: req.duration as i64,
-                                },
+                                "ticket": nr,
                             },
                         })
                     } else {
@@ -384,12 +379,7 @@ pub(crate) async fn update_record(Form(req): Form<UpdateRecordRequest>) -> impl 
                     if nr >= user.evolution {
                         Some(doc! {
                             "$set": {
-                                "evolution": Record {
-                                    steps: req.steps as i64,
-                                    level: req.level as i64,
-                                    distance: req.distance,
-                                    duration: req.duration as i64,
-                                },
+                                "evolution": nr,
                             },
                         })
                     } else {
@@ -400,12 +390,7 @@ pub(crate) async fn update_record(Form(req): Form<UpdateRecordRequest>) -> impl 
                     if nr >= user.rank {
                         Some(doc! {
                             "$set": {
-                                "rank": Record {
-                                    steps: req.steps as i64,
-                                    level: req.level as i64,
-                                    distance: req.distance,
-                                    duration: req.duration as i64,
-                                },
+                                "rank": nr,
                             },
                         })
                     } else {

@@ -79,9 +79,12 @@ impl PartialOrd for Record {
 
 impl Ord for Record {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.steps
-            .cmp(&other.steps)
-            .then(self.level.cmp(&other.level))
+        match self.steps.cmp(&other.steps) {
+            std::cmp::Ordering::Less => std::cmp::Ordering::Less,
+            std::cmp::Ordering::Equal => self.level.cmp(&other.level),
+            std::cmp::Ordering::Greater => std::cmp::Ordering::Greater, 
+        }
+            
     }
 }
 
