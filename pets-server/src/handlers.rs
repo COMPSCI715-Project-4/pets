@@ -387,15 +387,11 @@ pub(crate) async fn update_record(Form(req): Form<UpdateRecordRequest>) -> impl 
                     }
                 }
                 "rank" => {
-                    if nr.level >= user.rank.level {
-                        Some(doc! {
-                            "$set": {
-                                "rank": nr,
-                            },
-                        })
-                    } else {
-                        None
-                    }
+                    Some(doc! {
+                        "$set": {
+                            "rank": nr,
+                        },
+                    }) 
                 }
                 _ => {
                     return (
