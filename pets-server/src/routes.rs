@@ -1,6 +1,6 @@
 use crate::db::schema::Record;
 
-use super::db::schema::{Pet, User};
+use super::db::schema::User;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -92,30 +92,10 @@ pub(crate) struct Response<D> {
 }
 
 impl<D> Response<D> {
-    pub(crate) fn new() -> Self {
-        Response {
-            err: None,
-            data: None,
-        }
-    }
-
     pub(crate) fn with_err(err: String) -> Self {
         Response {
             err: Some(err),
             data: None,
         }
     }
-
-    pub(crate) fn with_data(data: D) -> Self {
-        Response {
-            err: None,
-            data: Some(data),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct RankRecord {
-    username: String,
-    pet: Pet,
 }

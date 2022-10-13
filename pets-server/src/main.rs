@@ -64,9 +64,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let app = Router::new()
         .route("/login", post(handlers::login))
-        .route("/signup", post(handlers::signup))
-        .route("/ticket/create", post(handlers::create_ticket))
-        .route("/ticket/fetch", post(handlers::fetch_tickets))
+        .route("/signup", post(handlers::signup)) 
         .route("/rank", get(handlers::rank))
         .route("/rank/update", post(handlers::update_record))
         .route("/intensity", post(handlers::update_average_steps))

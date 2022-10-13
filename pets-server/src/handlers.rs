@@ -1,5 +1,5 @@
 use crate::{
-    db::schema::{Record, Ticket, User},
+    db::schema::{Record, User},
     routes::{
         CreateTicketRequest, FetchTicketsRequest, LoginRequest, Rank, ResetAverageStepsRequest,
         Response, SignupRequest, UpdateAverageStepsRequest, UpdateRecordRequest, UserResponse,
@@ -365,7 +365,7 @@ pub(crate) async fn update_record(Form(req): Form<UpdateRecordRequest>) -> impl 
         Ok(Some(user)) => {
             let update = match req.kind.to_lowercase().as_str().trim() {
                 "ticket" => {
-                    if nr >= user.ticket {
+                    if nr.level >= user.ticket.level {
                         Some(doc! {
                             "$set": {
                                 "ticket": nr,
@@ -376,7 +376,7 @@ pub(crate) async fn update_record(Form(req): Form<UpdateRecordRequest>) -> impl 
                     }
                 }
                 "evolution" => {
-                    if nr >= user.evolution {
+                    if nr.level >= user.evolution.level {
                         Some(doc! {
                             "$set": {
                                 "evolution": nr,
@@ -387,7 +387,7 @@ pub(crate) async fn update_record(Form(req): Form<UpdateRecordRequest>) -> impl 
                     }
                 }
                 "rank" => {
-                    if nr >= user.rank {
+                    if nr.level >= user.rank.level {
                         Some(doc! {
                             "$set": {
                                 "rank": nr,
@@ -457,138 +457,7 @@ pub(crate) async fn update_record(Form(req): Form<UpdateRecordRequest>) -> impl 
     }
 }
 
-pub(crate) async fn create_ticket(Form(req): Form<CreateTicketRequest>) -> impl IntoResponse {
-    let client = DB_CLIENT.get().unwrap();
-    let cfg = CONFIG.get().unwrap();
-    let jwt = match parse_jwt(req.token, &cfg.secret) {
-        Ok(jwt) => jwt,
-        Err(e) => {
-            tracing::error!(err=?e);
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(Response {
-                    err: Some(format!("{:?}", e)),
-                    data: None,
-                }),
-            );
-        }
-    };
 
-    let users = client.database(&cfg.db_name).collection::<User>("users");
-
-    let filter = doc! {
-        "username": jwt.sub,
-    };
-
-    match users.find_one(filter.clone(), None).await {
-        Ok(Some(mut user)) => {
-            user.tickets
-                .push(Ticket::new(req.description, req.expires_at, req.level));
-            let update = doc! {
-                "$set": {
-                    "tickets": user.tickets.clone(),
-                }
-            };
-
-            match users.update_one(filter, update, None).await {
-                Ok(_) => (
-                    StatusCode::OK,
-                    Json(Response {
-                        err: None,
-                        data: Some(user.tickets),
-                    }),
-                ),
-                Err(e) => {
-                    tracing::error!(err=?e);
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(Response {
-                            err: Some(format!("{:?}", e)),
-                            data: None,
-                        }),
-                    )
-                }
-            }
-        }
-        Ok(None) => (
-            StatusCode::BAD_REQUEST,
-            Json(Response {
-                err: Some("user not found".to_string()),
-                data: None,
-            }),
-        ),
-        Err(e) => {
-            tracing::error!(err=?e);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(Response {
-                    err: Some(format!("{:?}", e)),
-                    data: None,
-                }),
-            )
-        }
-    }
-}
-
-pub(crate) async fn fetch_tickets(Form(req): Form<FetchTicketsRequest>) -> impl IntoResponse {
-    let client = DB_CLIENT.get().unwrap();
-    let cfg = CONFIG.get().unwrap();
-    let jwt = match parse_jwt(req.token, &cfg.secret) {
-        Ok(jwt) => jwt,
-        Err(e) => {
-            tracing::error!(err=?e);
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(Response {
-                    err: Some(format!("{:?}", e)),
-                    data: None,
-                }),
-            );
-        }
-    };
-
-    let users = client.database(&cfg.db_name).collection::<User>("users");
-
-    let filter = doc! {
-        "username": jwt.sub,
-    };
-
-    match users.find_one(filter.clone(), None).await {
-        Ok(Some(user)) => {
-            let tickets = user.tickets.into_iter().filter(|t| {
-                std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs()
-                    < t.expires_at
-            });
-            (
-                StatusCode::OK,
-                Json(Response {
-                    err: None,
-                    data: Some(tickets.collect::<Vec<Ticket>>()),
-                }),
-            )
-        }
-        Ok(None) => (
-            StatusCode::BAD_REQUEST,
-            Json(Response {
-                err: Some("user not found".to_string()),
-                data: None,
-            }),
-        ),
-        Err(e) => {
-            tracing::error!(err=?e);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(Response {
-                    err: Some(format!("{:?}", e)),
-                    data: None,
-                }),
-            )
-        }
-    }
-}
 
 pub(crate) async fn rank() -> impl IntoResponse {
     let client = DB_CLIENT.get().unwrap();
